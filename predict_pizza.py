@@ -6,6 +6,7 @@ from numpy.random import shuffle
 from sklearn import linear_model
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
 import csv
 import math
@@ -67,7 +68,7 @@ def build_num_features_matrix(data_set):
         mat[i][8] = data_set[i]['requester_days_since_first_post_on_raop_at_request']
         mat[i][9] = data_set[i]['unix_timestamp_of_request']
         mat[i][10] = data_set[i]['unix_timestamp_of_request_utc']
-    return mat
+    return scale(mat)
 
 
 def get_meta(data_set, field_name):
