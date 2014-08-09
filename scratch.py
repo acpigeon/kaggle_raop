@@ -1,6 +1,7 @@
 __author__ = 'acpigeon'
 import json
 import numpy as np
+import random
 from numpy.random import shuffle
 from sklearn import linear_model
 from sklearn.grid_search import GridSearchCV
@@ -33,7 +34,19 @@ def load_data(filename):
     input_file = open(filename, 'r')
     file_contents = input_file.read()
     raw_data = json.loads(file_contents)
-    return raw_data
+    random.shuffle(raw_data)  # Shuffle the data now before we transform it
+
+    if 'requester_received_pizza' in raw_data[0].keys():  # this is the train set, downsample neg class
+        neg_class_count = 0
+        downsampled_data = []
+        for example in raw_data:
+            if example['requester_received_pizza'] is True or neg_class_count < 995:
+                downsampled_data.append(example)
+                if example['requester_received_pizza'] is False:
+                    neg_class_count += 1
+        return downsampled_data
+    else:
+        return raw_data
 
 
 def build_num_features_matrix(data_set):
@@ -81,7 +94,6 @@ def split_matrix(mat):
     split = len(mat) / 3
     xval_split = mat[0:split]
     train_split = mat[split:]
-
     return train_split, xval_split
 
 
@@ -97,82 +109,48 @@ def generate_tfidf_matrix(train_data, test_data):
         test_text.append(t['request_text_edit_aware'])
 
     v = TfidfVectorizer(stop_words='english', min_df=0.01, max_df=0.5)
-    full_vocab = v.fit(train_text + test_text)
-    print len(v.get_feature_names())
+    v.fit(train_text + test_text)
     return v.transform(train_text), v.transform(test_text)
 
 
 if __name__ == "__main__":
     # Load train data
-    train_data = load_data('train.json')
-    train_ids = get_meta(train_data, 'request_id')
-    train_numeric_features = build_num_features_matrix(train_data)
-    train_labels = get_meta(train_data, 'requester_received_pizza')
+    train_data = load_data('train.json')  # check
+    train_ids = get_meta(train_data, 'request_id')  # check
+    train_numeric_features = build_num_features_matrix(train_data)  # check
+    train_labels = get_meta(train_data, 'requester_received_pizza')  # check
 
     # Load test data
-    test_data = load_data('test.json')
-    test_ids = get_meta(test_data, 'request_id')
-    test_numeric_features = build_num_features_matrix(test_data)
+    test_data = load_data('test.json')  # check
+    test_ids = get_meta(test_data, 'request_id')  # check
+    test_numeric_features = build_num_features_matrix(test_data)  # check
 
-    # Shuffle data before splitting
-    index_array = np.arange(len(train_labels))
-    #shuffle(index_array)
-    shuffled_ids = train_ids[index_array[:]]
-    shuffled_features = train_numeric_features[index_array[:]]
-    shuffled_labels = train_labels[index_array[:]].ravel()  # changes column vector to row vector
-    print shuffled_labels.shape
-
-    # Split data in train and xval sets
-    id_t, id_v = split_matrix(shuffled_ids)
-    X_t, X_v = split_matrix(shuffled_features)
-    y_t, y_v = split_matrix(shuffled_labels)
-
+    # Train tf before messing with the data
     tf_train, tf_test = generate_tfidf_matrix(train_data, test_data)
 
-    print train_numeric_features.shape, tf_train.shape
-    print test_numeric_features.shape, tf_test.shape
-    feature_matrix = np.concatenate((train_numeric_features, tf_train), axis=1)
-    test_feature_matrix = np.concatenate((test_numeric_features, tf_test), axis=1)
+    # Combine all the features
+    train_feature_matrix = np.concatenate((train_numeric_features, tf_train.todense()), axis=1)
+    test_feature_matrix = np.concatenate((test_numeric_features, tf_test.todense()), axis=1)
 
-    """
-    print "Training model..."
-    for i, C in enumerate(10.0 ** np.arange(1, 4)):
-        lr_l1 = linear_model.LogisticRegression(C=C, penalty='l1', tol=0.01)
-        lr_l2 = linear_model.LogisticRegression(C=C, penalty='l2', tol=0.01)
-        lr_l1.fit(X_t, np.array(y_t))
-        lr_l2.fit(X_t, np.array(y_t))
+    # Split training data in train and xval sets
+    id_t, id_v = split_matrix(train_ids)
+    X_t, X_v = split_matrix(train_feature_matrix)
+    y_t, y_v = split_matrix(train_labels)
 
-        print "Scoring model with C=" + str(C) + "..."
-        print "L1 Score: " + str(lr_l1.score(X_v, y_v))
-        print "L2 Score: " + str(lr_l2.score(X_v, y_v))
-        print ""
-    """
-
-
-
-    final_lr = GradientBoostingClassifier()
+    # Train the model
+    gbc = GradientBoostingClassifier()
     alpha = np.array([math.pow(10, x) for x in np.arange(-5, 5)])
 
-    clf = GridSearchCV(final_lr, [{'n_estimators': [80, 100, 120], "max_depth": [3, 4, 5]}], cv=10, n_jobs=-1)
-    clf.fit(feature_matrix.toarray(), shuffled_labels)
-    #final_lr.fit(X_t, y_t)
-    #predictions = clf.predict(X_t)
+    clf = GridSearchCV(gbc, [{'n_estimators': [80, 100, 120], "max_depth": [3, 4, 5]}], cv=10, n_jobs=-1)
+    clf.fit(X_t, y_t.ravel())
 
-    print clf.score(feature_matrix.toarray(), shuffled_labels)
+    print clf.score(X_t, y_t.ravel())
 
-    predictions = clf.predict(test_feature_matrix.toarray())
-    #pred2 = clf.predict(X_t)
-
-    #print X_t[0]
-    #print test_numeric_features[0]
+    predictions = clf.predict(test_feature_matrix)
 
     print sum(predictions)
-    #print sum(pred2)
 
-    #print sum(y_t) * 1.0 / len(y_t)
-
-
-    output = zip([x[0] for x in test_ids], predictions)
+    output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
     output.insert(0, ["request_id", "requester_received_pizza"])
 
     output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
