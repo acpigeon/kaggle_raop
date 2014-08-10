@@ -1,16 +1,14 @@
 __author__ = 'acpigeon'
 import json
-import numpy as np
 import random
 import datetime
-from numpy.random import shuffle
-from sklearn import linear_model
+import math
+import csv
+import numpy as np
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
-import csv
-import math
 
 
 def load_data(filename):
@@ -52,7 +50,7 @@ def load_data(filename):
 
 def build_num_features_matrix(data_set):
     """
-    Returns an n x 11 matrix of all numeric features.
+    Returns an n x 9 matrix of all numeric features.
     """
     n = len(data_set)
     mat = np.zeros((n, 9))
@@ -128,16 +126,16 @@ def generate_tfidf_matrix(train_data, test_data, field_name, _min_df=0.01, _max_
 
 if __name__ == "__main__":
     # Load train data
-    train_data = load_data('train.json')  # check
-    train_ids = get_meta(train_data, 'request_id')  # check
-    train_numeric_features = build_num_features_matrix(train_data)  # check
+    train_data = load_data('train.json')
+    train_ids = get_meta(train_data, 'request_id')
+    train_numeric_features = build_num_features_matrix(train_data)
     train_date_features = build_date_features(train_data)
-    train_labels = get_meta(train_data, 'requester_received_pizza')  # check
+    train_labels = get_meta(train_data, 'requester_received_pizza')
 
     # Load test data
-    test_data = load_data('test.json')  # check
-    test_ids = get_meta(test_data, 'request_id')  # check
-    test_numeric_features = build_num_features_matrix(test_data)  # check
+    test_data = load_data('test.json')
+    test_ids = get_meta(test_data, 'request_id')
+    test_numeric_features = build_num_features_matrix(test_data)
     test_date_features = build_date_features(test_data)
 
     # Train all tf features before messing with the data
