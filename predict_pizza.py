@@ -26,7 +26,6 @@ def load_data(filename):
     requester_account_age_in_days_at_request: float
     requester_days_since_first_post_on_raop_at_request: float
     unix_timestamp_of_request: float
-    unix_timestamp_of_request_utc: float
     requester_username: string
     giver_username_if_known: string
     requester_subreddits_at_request: list of strings
@@ -84,8 +83,6 @@ def build_date_features(data_set):
     return mat
 
 
-
-
 def get_meta(data_set, field_name):
     """
     Returns an n x 1 array of the doc ids or labels.
@@ -113,18 +110,18 @@ def split_matrix(mat):
     return train_split, xval_split
 
 
-def generate_tfidf_matrix(train_data, test_data):
+def generate_tfidf_matrix(train_data, test_data, field_name, _min_df=0.01, _max_df=0.5):
     """
     Takes list of lists of text and returns the tfidf matrix.
     Used for request_text_edit_aware, ....
     """
     train_text, test_text = [], []
     for t in train_data:
-        train_text.append(t['request_text_edit_aware'])
+        train_text.append(t[field_name])
     for t in test_data:
-        test_text.append(t['request_text_edit_aware'])
+        test_text.append(t[field_name])
 
-    v = TfidfVectorizer(stop_words='english', min_df=0.01, max_df=0.5)
+    v = TfidfVectorizer(stop_words='english', min_df=_min_df, max_df=_max_df)
     v.fit(train_text + test_text)
     return v.transform(train_text), v.transform(test_text)
 
@@ -143,12 +140,13 @@ if __name__ == "__main__":
     test_numeric_features = build_num_features_matrix(test_data)  # check
     test_date_features = build_date_features(test_data)
 
-    # Train tf before messing with the data
-    tf_train, tf_test = generate_tfidf_matrix(train_data, test_data)
+    # Train all tf features before messing with the data
+    tf_train_request, tf_test_request = generate_tfidf_matrix(train_data, test_data, 'request_text_edit_aware')
+    tf_train_title, tf_test_title = generate_tfidf_matrix(train_data, test_data, 'request_title')
 
     # Combine all the features
-    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train.todense()), axis=1)
-    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test.todense()), axis=1)
+    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train_request.todense(), tf_train_title.todense()), axis=1)
+    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test_request.todense(), tf_test_title.todense()), axis=1)
 
     # Split training data in train and xval sets
     id_t, id_v = split_matrix(train_ids)
