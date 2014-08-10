@@ -2,6 +2,7 @@ __author__ = 'acpigeon'
 import json
 import numpy as np
 import random
+import datetime
 from numpy.random import shuffle
 from sklearn import linear_model
 from sklearn.grid_search import GridSearchCV
@@ -55,7 +56,7 @@ def build_num_features_matrix(data_set):
     Returns an n x 11 matrix of all numeric features.
     """
     n = len(data_set)
-    mat = np.zeros((n, 11))
+    mat = np.zeros((n, 9))
     for i in xrange(n):
         mat[i][0] = data_set[i]['requester_number_of_comments_at_request']
         mat[i][1] = data_set[i]['requester_number_of_comments_in_raop_at_request']
@@ -66,9 +67,23 @@ def build_num_features_matrix(data_set):
         mat[i][6] = data_set[i]['requester_upvotes_plus_downvotes_at_request']
         mat[i][7] = data_set[i]['requester_account_age_in_days_at_request']
         mat[i][8] = data_set[i]['requester_days_since_first_post_on_raop_at_request']
-        mat[i][9] = data_set[i]['unix_timestamp_of_request']
-        mat[i][10] = data_set[i]['unix_timestamp_of_request_utc']
     return scale(mat)
+
+
+def build_date_features(data_set):
+    """
+    For the date of posting (from unix_timestamp_of_request), convert to day of week feature.
+    """
+    n = len(data_set)
+    mat = np.zeros((n, 7))
+    date_to_columns = {'Mon': 0,  'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
+    for i in xrange(n):
+        epoch_seconds = data_set[i]['unix_timestamp_of_request']
+        day = datetime.datetime.fromtimestamp(epoch_seconds).strftime('%a')
+        mat[i][date_to_columns[day]] = 1
+    return mat
+
+
 
 
 def get_meta(data_set, field_name):
@@ -119,19 +134,21 @@ if __name__ == "__main__":
     train_data = load_data('train.json')  # check
     train_ids = get_meta(train_data, 'request_id')  # check
     train_numeric_features = build_num_features_matrix(train_data)  # check
+    train_date_features = build_date_features(train_data)
     train_labels = get_meta(train_data, 'requester_received_pizza')  # check
 
     # Load test data
     test_data = load_data('test.json')  # check
     test_ids = get_meta(test_data, 'request_id')  # check
     test_numeric_features = build_num_features_matrix(test_data)  # check
+    test_date_features = build_date_features(test_data)
 
     # Train tf before messing with the data
     tf_train, tf_test = generate_tfidf_matrix(train_data, test_data)
 
     # Combine all the features
-    train_feature_matrix = np.concatenate((train_numeric_features, tf_train.todense()), axis=1)
-    test_feature_matrix = np.concatenate((test_numeric_features, tf_test.todense()), axis=1)
+    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train.todense()), axis=1)
+    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test.todense()), axis=1)
 
     # Split training data in train and xval sets
     id_t, id_v = split_matrix(train_ids)
