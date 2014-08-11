@@ -7,6 +7,7 @@ import csv
 import numpy as np
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
 
@@ -24,8 +25,6 @@ def load_data(filename):
     requester_account_age_in_days_at_request: float
     requester_days_since_first_post_on_raop_at_request: float
     unix_timestamp_of_request: float
-    requester_username: string
-    giver_username_if_known: string
     requester_subreddits_at_request: list of strings
     request_text_edit_aware: string
     request_title: string
@@ -81,6 +80,19 @@ def build_date_features(data_set):
     return mat
 
 
+def build_text_list_features(data_set):
+    """
+    Convert list of text into categorical features, only used for subreddits here.
+    """
+    n = len(data_set)
+    vectorizer = CountVectorizer()
+    lists_of_subreddits = []
+    for i in xrange(n):
+        lists_of_subreddits.append(' '.join(data_set[i]['requester_subreddits_at_request']))
+    mat = vectorizer.fit_transform(lists_of_subreddits)
+    return mat.todense()
+
+
 def get_meta(data_set, field_name):
     """
     Returns an n x 1 array of the doc ids or labels.
@@ -121,7 +133,7 @@ def generate_tfidf_matrix(train_data, test_data, field_name, _min_df=0.01, _max_
 
     v = TfidfVectorizer(stop_words='english', min_df=_min_df, max_df=_max_df)
     v.fit(train_text + test_text)
-    return v.transform(train_text), v.transform(test_text)
+    return v.transform(train_text).todense(), v.transform(test_text).todense()
 
 
 if __name__ == "__main__":
@@ -130,6 +142,7 @@ if __name__ == "__main__":
     train_ids = get_meta(train_data, 'request_id')
     train_numeric_features = build_num_features_matrix(train_data)
     train_date_features = build_date_features(train_data)
+    train_subreddit_features = build_text_list_features(train_data)
     train_labels = get_meta(train_data, 'requester_received_pizza')
 
     # Load test data
@@ -137,14 +150,15 @@ if __name__ == "__main__":
     test_ids = get_meta(test_data, 'request_id')
     test_numeric_features = build_num_features_matrix(test_data)
     test_date_features = build_date_features(test_data)
+    test_subreddit_features = build_text_list_features(test_data)
 
     # Train all tf features before messing with the data
     tf_train_request, tf_test_request = generate_tfidf_matrix(train_data, test_data, 'request_text_edit_aware')
     tf_train_title, tf_test_title = generate_tfidf_matrix(train_data, test_data, 'request_title')
 
     # Combine all the features
-    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train_request.todense(), tf_train_title.todense()), axis=1)
-    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test_request.todense(), tf_test_title.todense()), axis=1)
+    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train_request, tf_train_title), axis=1)
+    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test_request, tf_test_title), axis=1)
 
     # Split training data in train and xval sets
     id_t, id_v = split_matrix(train_ids)
