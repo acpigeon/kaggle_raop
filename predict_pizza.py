@@ -12,7 +12,7 @@ from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
 
 
-def load_data(filename):
+def load_data(filename, max_neg_class=1800):
     """
     request_id: text, key
     requester_number_of_comments_at_request: int
@@ -38,7 +38,7 @@ def load_data(filename):
         neg_class_count = 0
         downsampled_data = []
         for example in raw_data:
-            if example['requester_received_pizza'] is True or neg_class_count < 995:
+            if example['requester_received_pizza'] is True or neg_class_count < max_neg_class:
                 downsampled_data.append(example)
                 if example['requester_received_pizza'] is False:
                     neg_class_count += 1
@@ -120,15 +120,15 @@ def split_matrix(mat):
     return train_split, xval_split
 
 
-def generate_tfidf_matrix(train_data, test_data, field_name, _min_df=0.01, _max_df=0.5):
+def generate_tfidf_matrix(train, test, field_name, _min_df=0.01, _max_df=0.5):
     """
     Takes list of lists of text and returns the tfidf matrix.
     Used for request_text_edit_aware, ....
     """
     train_text, test_text = [], []
-    for t in train_data:
+    for t in train:
         train_text.append(t[field_name])
-    for t in test_data:
+    for t in test:
         test_text.append(t[field_name])
 
     v = TfidfVectorizer(stop_words='english', min_df=_min_df, max_df=_max_df)
@@ -157,8 +157,10 @@ if __name__ == "__main__":
     tf_train_title, tf_test_title = generate_tfidf_matrix(train_data, test_data, 'request_title')
 
     # Combine all the features
-    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features, tf_train_request, tf_train_title), axis=1)
-    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features, tf_test_request, tf_test_title), axis=1)
+    train_feature_matrix = np.concatenate((train_numeric_features, train_date_features,
+                                           tf_train_request, tf_train_title), axis=1)
+    test_feature_matrix = np.concatenate((test_numeric_features, test_date_features,
+                                          tf_test_request, tf_test_title), axis=1)
 
     # Split training data in train and xval sets
     id_t, id_v = split_matrix(train_ids)
