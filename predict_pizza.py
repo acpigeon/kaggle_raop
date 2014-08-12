@@ -10,9 +10,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import classification_report
 
 
-def load_data(filename, max_neg_class=1800):
+def load_data(filename, max_neg_class=600):
     """
     request_id: text, key
     requester_number_of_comments_at_request: int
@@ -113,6 +114,7 @@ def get_meta(data_set, field_name):
 def split_matrix(mat):
     """
     Splits the input data and along the split index param.
+    Better: http://scikit-learn.org/stable/modules/generated/sklearn.cross_validation.train_test_split.html#sklearn.cross_validation.train_test_split
     """
     split = len(mat) / 3
     xval_split = mat[0:split]
@@ -174,11 +176,12 @@ if __name__ == "__main__":
     clf = GridSearchCV(gbc, [{'n_estimators': [80, 100, 120], "max_depth": [3, 4, 5]}], cv=10, n_jobs=-1)
     clf.fit(X_t, y_t.ravel())
 
-    print clf.score(X_t, y_t.ravel())
+    x_val_predictions = clf.predict(X_v)
+    print classification_report(y_v, x_val_predictions)
 
+
+    """
     predictions = clf.predict(test_feature_matrix)
-
-    print sum(predictions)
 
     output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
     output.insert(0, ["request_id", "requester_received_pizza"])
@@ -186,3 +189,4 @@ if __name__ == "__main__":
     output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
     for row in output:
         output_file.writerow(row)
+    """
