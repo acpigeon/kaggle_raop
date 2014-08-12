@@ -10,6 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 
 
@@ -171,6 +172,7 @@ if __name__ == "__main__":
 
     # Train the model
     gbc = GradientBoostingClassifier()
+    #lr = LogisticRegression()
     alpha = np.array([math.pow(10, x) for x in np.arange(-5, 5)])
 
     clf = GridSearchCV(gbc, [{'n_estimators': [80, 100, 120], "max_depth": [3, 4, 5]}], cv=10, n_jobs=-1)
