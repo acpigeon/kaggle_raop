@@ -1,3 +1,7 @@
+import nltk
+from nltk.stem.snowball import PorterStemmer
+from sklearn.cross_validation import train_test_split
+
 __author__ = 'acpigeon'
 import json
 import random
@@ -14,7 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 
 
-def load_data(filename, max_neg_class=600):
+def load_data(filename, max_neg_class=1100):
     """
     request_id: text, key
     requester_number_of_comments_at_request: int
@@ -123,7 +127,20 @@ def split_matrix(mat):
     return train_split, xval_split
 
 
-def generate_tfidf_matrix(train, test, field_name, _min_df=0.01, _max_df=0.5):
+def stem_tokens(tokens, stemmer):
+    stemmed = []
+    for item in tokens:
+        stemmed.append(stemmer.stem(item))
+    return stemmed
+
+
+def tokenize(text):
+    tokens = nltk.word_tokenize(text)
+    stems = stem_tokens(tokens, PorterStemmer())
+    return stems
+
+
+def generate_tfidf_matrix(train, test, field_name, _min_df=0.01, _max_df=0.7):
     """
     Takes list of lists of text and returns the tfidf matrix.
     Used for request_text_edit_aware, ....
@@ -134,7 +151,7 @@ def generate_tfidf_matrix(train, test, field_name, _min_df=0.01, _max_df=0.5):
     for t in test:
         test_text.append(t[field_name])
 
-    v = TfidfVectorizer(stop_words='english', min_df=_min_df, max_df=_max_df)
+    v = TfidfVectorizer(stop_words='english', min_df=_min_df, max_df=_max_df, tokenizer=tokenize)
     v.fit(train_text + test_text)
     return v.transform(train_text).todense(), v.transform(test_text).todense()
 
@@ -166,23 +183,27 @@ if __name__ == "__main__":
                                           tf_test_request, tf_test_title), axis=1)
 
     # Split training data in train and xval sets
-    id_t, id_v = split_matrix(train_ids)
-    X_t, X_v = split_matrix(train_feature_matrix)
-    y_t, y_v = split_matrix(train_labels)
+    #id_t, id_v = split_matrix(train_ids)
+    #X_t, X_v = split_matrix(train_feature_matrix)
+    #y_t, y_v = split_matrix(train_labels)
+
+    X_train, X_test, y_train, y_test = train_test_split(train_feature_matrix, train_labels.ravel())
 
     # Train the model
     gbc = GradientBoostingClassifier()
     #lr = LogisticRegression()
-    alpha = np.array([math.pow(10, x) for x in np.arange(-5, 5)])
+    alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
 
-    clf = GridSearchCV(gbc, [{'n_estimators': [80, 100, 120], "max_depth": [3, 4, 5]}], cv=10, n_jobs=-1)
-    clf.fit(X_t, y_t.ravel())
+    clf = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
+                              "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
+    clf.fit(X_train, y_train)
 
-    x_val_predictions = clf.predict(X_v)
-    print classification_report(y_v, x_val_predictions)
+    x_val_predictions = clf.predict(X_test)
+    print classification_report(y_test, x_val_predictions)
 
+    import joblib
+    joblib.dump(clf, 'model.bin', 5)
 
-    """
     predictions = clf.predict(test_feature_matrix)
 
     output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
@@ -191,4 +212,3 @@ if __name__ == "__main__":
     output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
     for row in output:
         output_file.writerow(row)
-    """
