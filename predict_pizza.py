@@ -182,16 +182,10 @@ if __name__ == "__main__":
     test_feature_matrix = np.concatenate((test_numeric_features, test_date_features,
                                           tf_test_request, tf_test_title), axis=1)
 
-    # Split training data in train and xval sets
-    #id_t, id_v = split_matrix(train_ids)
-    #X_t, X_v = split_matrix(train_feature_matrix)
-    #y_t, y_v = split_matrix(train_labels)
-
     X_train, X_test, y_train, y_test = train_test_split(train_feature_matrix, train_labels.ravel())
 
     # Train the model
     gbc = GradientBoostingClassifier()
-    #lr = LogisticRegression()
     alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
 
     clf = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
