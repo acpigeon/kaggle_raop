@@ -221,21 +221,38 @@ if __name__ == "__main__":
     X_train_3 = np.array(X_train_neg_3 + X_train_pos)
     y_train_3 = np.array(y_train_neg_3 + y_train_pos)
 
+    # Train the models
 
-    # Train the model
-    #gbc = GradientBoostingClassifier()
-    #alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
+    #1
+    clf1 = LogisticRegression(C=1, penalty='l1', tol=0.01)
+    clf1.fit(X_train_1, y_train_1)
+    clf_1_predictions = clf1.predict(X_test)
+    class_rep_1 = classification_report(y_test, clf_1_predictions)
+    print class_rep_1
 
-    #clf = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
-    #                          "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
-    #clf.fit(X_train, y_train)
+    #2
+    clf2 = LogisticRegression(C=1, penalty='l2', tol=0.01)
+    clf2.fit(X_train_2, y_train_2)
+    clf_2_predictions = clf2.predict(X_test)
+    class_rep_2 = classification_report(y_test, clf_2_predictions)
+    print class_rep_2
 
-    #x_val_predictions = clf.predict(X_test)
-    #print classification_report(y_test, x_val_predictions)
+    #3
+    gbc = GradientBoostingClassifier()
+    alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
 
-    #import joblib
-    #joblib.dump(clf, 'model.bin', 5)
+    clf3 = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
+                              "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
 
+    clf3.fit(X_train_3, y_train_3)
+    clf_3_predictions = clf3.predict(X_test)
+    class_rep_3 = classification_report(y_test, clf_3_predictions)
+    print class_rep_3
+
+    import joblib
+    joblib.dump(clf, 'model.bin', 5)
+
+    # Average predictions from the three classifiers
     #predictions = clf.predict(test_feature_matrix)
 
     #output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
