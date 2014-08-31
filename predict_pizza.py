@@ -18,7 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 
 
-def load_data(filename, max_neg_class=1100):
+def load_data(filename, max_neg_class=float("inf")):
     """
     request_id: text, key
     requester_number_of_comments_at_request: int
@@ -182,27 +182,65 @@ if __name__ == "__main__":
     test_feature_matrix = np.concatenate((test_numeric_features, test_date_features,
                                           tf_test_request, tf_test_title), axis=1)
 
-    X_train, X_test, y_train, y_test = train_test_split(train_feature_matrix, train_labels.ravel())
+    X_train_all, X_test, y_train, y_test = train_test_split(train_feature_matrix, train_labels.ravel())
+
+    # In the test split, there is a pos/neg imbalance of ~ 730 to 2200
+    # Split the negative class into three roughly equal groups so we can train three different models and take the avg
+    # Methodology comes from EasyEnsemble approach from http://cse.seu.edu.cn/people/xyliu/publication/tsmcb09.pdf
+
+    X_train_neg_1, y_train_neg_1 = [], []
+    X_train_neg_2, y_train_neg_2 = [], []
+    X_train_neg_3, y_train_neg_3 = [], []
+    X_train_pos, y_train_pos = [], []
+
+    for s in zip(X_train_all, y_train):
+        if s[1] == 1.0:
+            X_train_pos.append(s[0])
+            y_train_pos.append(s[1])
+        else:
+            sorting_hat = random.choice([1, 2, 3])
+            if sorting_hat == 1:
+                X_train_neg_1.append(s[0])
+                y_train_neg_1.append(s[1])
+            elif sorting_hat == 2:
+                X_train_neg_2.append(s[0])
+                y_train_neg_2.append(s[1])
+            else:
+                X_train_neg_3.append(s[0])
+                y_train_neg_3.append(s[1])
+
+    # Then recombine each of the negative class subsets with the positive class
+    # This gives us three separate training groups of approximately equal split!
+
+    X_train_1 = np.array(X_train_neg_1 + X_train_pos)
+    y_train_1 = np.array(y_train_neg_1 + y_train_pos)
+
+    X_train_2 = np.array(X_train_neg_2 + X_train_pos)
+    y_train_2 = np.array(y_train_neg_2 + y_train_pos)
+
+    X_train_3 = np.array(X_train_neg_3 + X_train_pos)
+    y_train_3 = np.array(y_train_neg_3 + y_train_pos)
+
 
     # Train the model
-    gbc = GradientBoostingClassifier()
-    alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
+    #gbc = GradientBoostingClassifier()
+    #alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
 
-    clf = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
-                              "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
-    clf.fit(X_train, y_train)
+    #clf = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
+    #                          "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
+    #clf.fit(X_train, y_train)
 
-    x_val_predictions = clf.predict(X_test)
-    print classification_report(y_test, x_val_predictions)
+    #x_val_predictions = clf.predict(X_test)
+    #print classification_report(y_test, x_val_predictions)
 
-    import joblib
-    joblib.dump(clf, 'model.bin', 5)
+    #import joblib
+    #joblib.dump(clf, 'model.bin', 5)
 
-    predictions = clf.predict(test_feature_matrix)
+    #predictions = clf.predict(test_feature_matrix)
 
-    output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
-    output.insert(0, ["request_id", "requester_received_pizza"])
+    #output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
+    #output.insert(0, ["request_id", "requester_received_pizza"])
 
-    output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
-    for row in output:
-        output_file.writerow(row)
+    #output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
+    #for row in output:
+    #    output_file.writerow(row)
