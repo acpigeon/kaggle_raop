@@ -116,17 +116,6 @@ def get_meta(data_set, field_name):
     return mat
 
 
-def split_matrix(mat):
-    """
-    Splits the input data and along the split index param.
-    Better: http://scikit-learn.org/stable/modules/generated/sklearn.cross_validation.train_test_split.html#sklearn.cross_validation.train_test_split
-    """
-    split = len(mat) / 3
-    xval_split = mat[0:split]
-    train_split = mat[split:]
-    return train_split, xval_split
-
-
 def stem_tokens(tokens, stemmer):
     stemmed = []
     for item in tokens:
@@ -247,17 +236,19 @@ if __name__ == "__main__":
     class_rep_3 = classification_report(y_test, clf_3_predictions)
     print class_rep_3
 
-
     #joblib.dump(clf, 'model.bin', 5)
 
-    print zip(clf_1_predictions, clf_2_predictions, clf_3_predictions)
-
     # Average predictions from the three classifiers
-    #predictions = clf.predict(test_feature_matrix)
+    output_predictions = []
+    for p in zip(clf_1_predictions, clf_2_predictions, clf_3_predictions):
+        if p[0] + p[1] + p[2] > 1:
+            output_predictions.append(1)
+        else:
+            output_predictions.append(0)
 
-    #output = zip([x[0] for x in test_ids], [int(x) for x in predictions])
-    #output.insert(0, ["request_id", "requester_received_pizza"])
+    output = zip([x[0] for x in test_ids], output_predictions)
+    output.insert(0, ["request_id", "requester_received_pizza"])
 
-    #output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
-    #for row in output:
-    #    output_file.writerow(row)
+    output_file = csv.writer(open('predictions.csv', 'w'), delimiter=",", quotechar='"')
+    for row in output:
+        output_file.writerow(row)
