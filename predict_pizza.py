@@ -1,14 +1,14 @@
-import nltk
-from nltk.stem.snowball import PorterStemmer
-from sklearn.cross_validation import train_test_split
-
 __author__ = 'acpigeon'
 import json
 import random
 import datetime
 import math
 import csv
+import joblib
+import nltk
 import numpy as np
+from nltk.stem.snowball import PorterStemmer
+from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -240,17 +240,17 @@ if __name__ == "__main__":
     #3
     gbc = GradientBoostingClassifier()
     alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
-
     clf3 = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
                               "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
-
     clf3.fit(X_train_3, y_train_3)
     clf_3_predictions = clf3.predict(X_test)
     class_rep_3 = classification_report(y_test, clf_3_predictions)
     print class_rep_3
 
-    import joblib
-    joblib.dump(clf, 'model.bin', 5)
+
+    #joblib.dump(clf, 'model.bin', 5)
+
+    print zip(clf_1_predictions, clf_2_predictions, clf_3_predictions)
 
     # Average predictions from the three classifiers
     #predictions = clf.predict(test_feature_matrix)
