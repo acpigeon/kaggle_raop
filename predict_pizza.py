@@ -76,16 +76,18 @@ def build_num_features_matrix(data_set):
 
 def build_date_features(data_set):
     """
-    For the date of posting (from unix_timestamp_of_request), convert to day of week feature.
+    For the date of posting (from unix_timestamp_of_request), convert to day of week and hours after midnight feature.
     """
     n = len(data_set)
-    mat = np.zeros((n, 7))
+    mat = np.zeros((n, 8))
     date_to_columns = {'Mon': 0,  'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
     for i in xrange(n):
         epoch_seconds = data_set[i]['unix_timestamp_of_request']
         day = datetime.datetime.fromtimestamp(epoch_seconds).strftime('%a')
+        hours_after_midnight = datetime.datetime.fromtimestamp(epoch_seconds).strftime('%H')
         mat[i][date_to_columns[day]] = 1
-    return mat
+        mat[i][7] = int(hours_after_midnight)
+        return mat
 
 
 def build_text_list_features(data_set):
