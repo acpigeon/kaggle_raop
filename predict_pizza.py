@@ -17,6 +17,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
 
 
 def load_data(filename, max_neg_class=float("inf")):
@@ -221,10 +222,14 @@ if __name__ == "__main__":
     print class_rep_1
 
     #2
-    clf2 = SVC(C=1, verbose=True)
+    svc = SVC()
+    params = [{'C': [0.5, 1, 5], 'gamma': [0.5, 0.1],
+               'kernel': ['linear'], 'class_weight': [{1: 1}, {1: 5}, {1: 10}]}]
+    clf2 = GridSearchCV(svc, param_grid=params, scoring='roc_auc', verbose=True, cv=5, n_jobs=-1)
     clf2.fit(X_train_2, y_train_2)
     clf_2_x_val_predictions = clf2.predict(X_test)
     class_rep_2 = classification_report(y_test, clf_2_x_val_predictions)
+    print clf2.best_params_
     print class_rep_2
 
     #3
@@ -235,6 +240,7 @@ if __name__ == "__main__":
     clf3.fit(X_train_3, y_train_3)
     clf_3_x_val_predictions = clf3.predict(X_test)
     class_rep_3 = classification_report(y_test, clf_3_x_val_predictions)
+    print clf3.best_params_
     print class_rep_3
 
     #joblib.dump(clf, 'model.bin', 5)
