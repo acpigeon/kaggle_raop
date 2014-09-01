@@ -240,9 +240,8 @@ if __name__ == "__main__":
 
     # Average predictions from the three classifiers
     clf_1_x_test_predictions = clf1.predict(test_feature_matrix)
-    clf_2_x_test_predictions = clf1.predict(test_feature_matrix)
-    clf_3_x_test_predictions = clf1.predict(test_feature_matrix)
-
+    clf_2_x_test_predictions = clf2.predict(test_feature_matrix)
+    clf_3_x_test_predictions = clf3.predict(test_feature_matrix)
 
     output_predictions = []
     for p in zip(clf_1_x_test_predictions, clf_2_x_test_predictions, clf_3_x_test_predictions):
