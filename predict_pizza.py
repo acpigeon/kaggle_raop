@@ -215,15 +215,15 @@ if __name__ == "__main__":
     #1
     clf1 = LogisticRegression(C=1, penalty='l1', tol=0.01)
     clf1.fit(X_train_1, y_train_1)
-    clf_1_predictions = clf1.predict(X_test)
-    class_rep_1 = classification_report(y_test, clf_1_predictions)
+    clf_1_x_val_predictions = clf1.predict(X_test)
+    class_rep_1 = classification_report(y_test, clf_1_x_val_predictions)
     print class_rep_1
 
     #2
     clf2 = LogisticRegression(C=1, penalty='l2', tol=0.01)
     clf2.fit(X_train_2, y_train_2)
-    clf_2_predictions = clf2.predict(X_test)
-    class_rep_2 = classification_report(y_test, clf_2_predictions)
+    clf_2_x_val_predictions = clf2.predict(X_test)
+    class_rep_2 = classification_report(y_test, clf_2_x_val_predictions)
     print class_rep_2
 
     #3
@@ -232,15 +232,21 @@ if __name__ == "__main__":
     clf3 = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
                               "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
     clf3.fit(X_train_3, y_train_3)
-    clf_3_predictions = clf3.predict(X_test)
-    class_rep_3 = classification_report(y_test, clf_3_predictions)
+    clf_3_x_val_predictions = clf3.predict(X_test)
+    class_rep_3 = classification_report(y_test, clf_3_x_val_predictions)
     print class_rep_3
 
     #joblib.dump(clf, 'model.bin', 5)
 
     # Average predictions from the three classifiers
+    clf_1_x_test_predictions = clf1.predict(test_feature_matrix)
+    clf_2_x_test_predictions = clf1.predict(test_feature_matrix)
+    clf_3_x_test_predictions = clf1.predict(test_feature_matrix)
+
+
     output_predictions = []
-    for p in zip(clf_1_predictions, clf_2_predictions, clf_3_predictions):
+    for p in zip(clf_1_x_test_predictions, clf_2_x_test_predictions, clf_3_x_test_predictions):
+        print p
         if p[0] + p[1] + p[2] > 1:
             output_predictions.append(1)
         else:
