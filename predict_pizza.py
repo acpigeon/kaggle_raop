@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import scale
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import classification_report
 
 
@@ -220,7 +221,7 @@ if __name__ == "__main__":
     print class_rep_1
 
     #2
-    clf2 = LogisticRegression(C=1, penalty='l2', tol=0.01)
+    clf2 = SVC(C=1, verbose=True)
     clf2.fit(X_train_2, y_train_2)
     clf_2_x_val_predictions = clf2.predict(X_test)
     class_rep_2 = classification_report(y_test, clf_2_x_val_predictions)
