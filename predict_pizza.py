@@ -215,15 +215,18 @@ if __name__ == "__main__":
     # Train the models
 
     #1
-    clf1 = LogisticRegression(C=1, penalty='l1', tol=0.01)
+    lr = LogisticRegression(tol=0.01)
+    params = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000], 'penalty': ['l1', 'l2']}
+    clf1 = GridSearchCV(lr, param_grid=params, scoring='roc_auc', verbose=True, cv=5, n_jobs=-1)
     clf1.fit(X_train_1, y_train_1)
     clf_1_x_val_predictions = clf1.predict(X_test)
     class_rep_1 = classification_report(y_test, clf_1_x_val_predictions)
+    print clf1.best_params_
     print class_rep_1
 
     #2
     svc = SVC()
-    params = [{'C': [0.5, 1, 5], 'gamma': [0.5, 0.1],
+    params = [{'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000], 'gamma': [0.5, 0.1],
                'kernel': ['linear'], 'class_weight': [{1: 1}, {1: 5}, {1: 10}]}]
     clf2 = GridSearchCV(svc, param_grid=params, scoring='roc_auc', verbose=True, cv=5, n_jobs=-1)
     clf2.fit(X_train_2, y_train_2)
@@ -252,7 +255,6 @@ if __name__ == "__main__":
 
     output_predictions = []
     for p in zip(clf_1_x_test_predictions, clf_2_x_test_predictions, clf_3_x_test_predictions):
-        print p
         if p[0] + p[1] + p[2] > 1:
             output_predictions.append(1)
         else:
