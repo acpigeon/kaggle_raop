@@ -1,3 +1,5 @@
+import pdb
+
 __author__ = 'acpigeon'
 import json
 import random
@@ -6,10 +8,13 @@ import math
 import csv
 import joblib
 import nltk
+
 import numpy as np
+from scipy.stats import randint as sp_randint
+from scipy.stats import uniform
 from nltk.stem.snowball import PorterStemmer
 from sklearn.cross_validation import train_test_split
-from sklearn.grid_search import GridSearchCV
+from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import scale
@@ -226,11 +231,21 @@ if __name__ == "__main__":
     print clf1.best_params_
     print class_rep_1
 
+
     #2
     svc = SVC()
-    params = [{'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000], 'gamma': [0.5, 0.1],
-               'kernel': ['linear'], 'class_weight': [{1: 1}, {1: 5}, {1: 10}]}]
-    clf2 = GridSearchCV(svc, param_grid=params, scoring='roc_auc', verbose=True, cv=5, n_jobs=-1)
+    svc_param_dist = {"C": uniform(),
+                         "gamma": uniform(),
+                         "kernel": ['linear', 'rbf'],
+                         "class_weight": [{1: 1}, {1: 2}, {1: 5}, {1: 10}],
+                         "probability": [True]
+                         }
+    #params = [{'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000], 'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+    #           'kernel': ['linear'], 'class_weight': [{1: 1}, {1: 5}, {1: 2}, {1: 3}, {1: 10}]}]
+
+    #clf2 = GridSearchCV(svc, param_grid=params, scoring='roc_auc', verbose=True, cv=5, n_jobs=-1)
+    clf2 = RandomizedSearchCV(svc, param_distributions=svc_param_dist, n_iter=100)
+
     clf2.fit(X_train_2, y_train_2)
     clf_2_x_val_predictions = clf2.predict(X_test)
     class_rep_2 = classification_report(y_test, clf_2_x_val_predictions)
@@ -239,9 +254,17 @@ if __name__ == "__main__":
 
     #3
     gbc = GradientBoostingClassifier()
-    alpha = np.array([math.pow(10, x) for x in np.arange(-2, 2)])
-    clf3 = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
-                              "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
+    forest_param_dist = {"max_depth": [3,4,5,6,7],
+                               "max_features": sp_randint(1, 11),
+                               "min_samples_split": sp_randint(1, 11),
+                               "min_samples_leaf": sp_randint(1, 11),
+                               "subsample": uniform(),
+                               "learning_rate": uniform(),
+                               "n_estimators": sp_randint(1, 351)}
+
+    clf3 = RandomizedSearchCV(gbc, param_distributions=forest_param_dist, n_iter=100)
+    #    clf3 = GridSearchCV(gbc, [{'learning_rate': [.01, .03, .1, .3], 'n_estimators': [50, 100, 150],
+    #                             "max_depth": [3, 4, 5]}], cv=5, n_jobs=-1, scoring='roc_auc', verbose=True)
     clf3.fit(X_train_3, y_train_3)
     clf_3_x_val_predictions = clf3.predict(X_test)
     class_rep_3 = classification_report(y_test, clf_3_x_val_predictions)
@@ -251,16 +274,17 @@ if __name__ == "__main__":
     #joblib.dump(clf, 'model.bin', 5)
 
     # Average predictions from the three classifiers
-    clf_1_x_test_predictions = clf1.predict(test_feature_matrix)
-    clf_2_x_test_predictions = clf2.predict(test_feature_matrix)
-    clf_3_x_test_predictions = clf3.predict(test_feature_matrix)
+    clf_1_x_test_predictions = clf1.best_estimator_.predict_proba(test_feature_matrix)[:, 1]
+    clf_2_x_test_predictions = clf2.best_estimator_.predict_proba(test_feature_matrix)[:, 1]
+    clf_3_x_test_predictions = clf3.best_estimator_.predict_proba(test_feature_matrix)[:, 1]
 
     output_predictions = []
     for p in zip(clf_1_x_test_predictions, clf_2_x_test_predictions, clf_3_x_test_predictions):
-        if p[0] + p[1] + p[2] > 1:
+        if p[0] + p[1] + p[2] > 1.25:
             output_predictions.append(1)
         else:
             output_predictions.append(0)
+
 
     output = zip([x[0] for x in test_ids], output_predictions)
     output.insert(0, ["request_id", "requester_received_pizza"])
